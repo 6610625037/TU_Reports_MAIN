@@ -1,0 +1,37 @@
+<nav class="bg-red-600 text-white shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <div class="flex items-center space-x-8">
+        <a href="{% url 'dashboard:map' %}" class="text-xl font-bold hover:text-amber-200">TU REPORT</a>
+
+        <!-- Navigation based on role -->
+        {% if user.role == 'admin' %}
+          <a href="{% url 'dashboard:summary' %}" class="hover:text-amber-200">Summary</a>
+        {% elif user.role == 'technician' %}
+          <a href="{% url 'technician:job_list' %}" class="hover:text-amber-200">งานของฉัน</a>
+        {% else %}
+          <a href="{% url 'tickets:my_tickets' %}" class="hover:text-amber-200">งานของฉัน</a>
+          <a href="{% url 'tickets:create_ticket' %}" class="hover:text-amber-200">แจ้งปัญหา</a>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Notification Bell -->
+        <a href="{% url 'notify:list' %}" class="relative hover:text-amber-200" title="การแจ้งเตือน">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+          {% if unread_notifications_count > 0 %}
+          <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+            {{ unread_notifications_count|slice:":2" }}{% if unread_notifications_count > 99 %}+{% endif %}
+          </span>
+          {% endif %}
+        </a>
+
+        <span class="text-sm">{{ user.get_display_name }}</span>
+        <span class="px-2 py-1 bg-amber-500 rounded text-xs">{{ user.get_role_display }}</span>
+        <a href="{% url 'authentication:logout' %}" class="text-sm hover:text-amber-200">ออกจากระบบ</a>
+      </div>
+    </div>
+  </div>
+</nav>

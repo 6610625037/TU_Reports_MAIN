@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}แผนที่ Tickets - TU REPORT{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+<!-- Leaflet MarkerCluster CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+    #map {
+        height: calc(100vh - 120px);
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .map-container {
+        position: relative;
+    }
+    .map-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .legend {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        line-height: 24px;
+        color: #555;
+    }
+    .legend h4 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .legend span {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        border-radius: 50%;
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">🗺️ แผนที่ Tickets</h1>
+        <p class="text-gray-600 mt-2">แสดงตำแหน่ง Tickets ทั้งหมดในระบบ ({{ total_tickets }} รายการ)</p>
+    </div>
+
+    <div class="map-container">
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <div class="flex space-x-2">
+                <button id="showAll" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    ทั้งหมด
+                </button>
+                <button id="showPending" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                    รอดำเนินการ
+                </button>
+                <button id="showInProgress" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+                    กำลังดำเนินการ
+                </button>
+                <button id="showCompleted" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                    เสร็จสิ้น
+                </button>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-4 legend">
+        <h4>สถานะ Ticket</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div><span style="background-color: #FFA500;"></span> รอดำเนินการ (PENDING)</div>
+            <div><span style="background-color: #9333EA;"></span> กำลังดำเนินการ (IN_PROGRESS)</div>
+            <div><span style="background-color: #10B981;"></span> เสร็จสิ้น (COMPLETED)</div>
+            <div><span style="background-color: #EF4444;"></span> ปิดงาน (CLOSED)</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+<!-- Leaflet MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+// Initialize map (centered on Thammasat University Rangsit)
+const map = L.map('map').setView([14.0736, 100.6047], 15);
+
+// Add OpenStreetMap tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+}).addTo(map);
+
+// Tickets data from Django
+const ticketsData = {{ tickets_geojson|safe }};
+
+// Color mapping for status
+const statusColors = {
+    'PENDING': '#FFA500',
+    'IN_PROGRESS': '#9333EA',
+    'INSPECTING': '#9333EA',
+    'WORKING': '#9333EA',
+    'COMPLETED': '#10B981',
+    'CLOSED': '#10B981',
+    'REJECTED': '#EF4444'
+};
+
+// Create marker cluster group
+const markers = L.markerClusterGroup({
+    chunkedLoading: true,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false
+});
+
+// Store all markers for filtering
+let allMarkers = [];
+
+// Add markers to map
+ticketsData.forEach(ticket => {
+    const coords = ticket.geometry.coordinates;
+    const props = ticket.properties;
+
+    const marker = L.circleMarker([coords[1], coords[0]], {
+        radius: 8,
+        fillColor: statusColors[props.status] || '#gray',
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+    });
+
+    marker.ticketStatus = props.status; // Store status for filtering
+
+    marker.bindPopup(`
+        <div class="p-2">
+            <h3 class="font-bold text-lg mb-2">Ticket #${props.id}</h3>
+            <p class="mb-1"><strong>หัวข้อ:</strong> ${props.title}</p>
+            <p class="mb-1"><strong>หมวดหมู่:</strong> ${props.category}</p>
+            <p class="mb-1"><strong>สถานะ:</strong> <span class="badge">${props.status_display}</span></p>
+            <p class="mb-1"><strong>ความเร่งด่วน:</strong> ${props.urgency}</p>
+            <p class="mb-2"><strong>สร้างเมื่อ:</strong> ${new Date(props.created_at).toLocaleString('th-TH')}</p>
+            <a href="/tickets/${props.id}/" class="text-blue-600 hover:underline">ดูรายละเอียด →</a>
+        </div>
+    `);
+
+    allMarkers.push(marker);
+    markers.addLayer(marker);
+});
+
+map.addLayer(markers);
+
+// Filter functionality
+document.getElementById('showAll').addEventListener('click', () => {
+    markers.clearLayers();
+    allMarkers.forEach(marker => markers.addLayer(marker));
+});
+
+document.getElementById('showPending').addEventListener('click', () => {
+    markers.clearLayers();
+    allMarkers.forEach(marker => {
+        if (marker.ticketStatus === 'PENDING') {
+            markers.addLayer(marker);
+        }
+    });
+});
+
+document.getElementById('showInProgress').addEventListener('click', () => {
+    markers.clearLayers();
+    allMarkers.forEach(marker => {
+        if (['IN_PROGRESS', 'INSPECTING', 'WORKING'].includes(marker.ticketStatus)) {
+            markers.addLayer(marker);
+        }
+    });
+});
+
+document.getElementById('showCompleted').addEventListener('click', () => {
+    markers.clearLayers();
+    allMarkers.forEach(marker => {
+        if (['COMPLETED', 'CLOSED'].includes(marker.ticketStatus)) {
+            markers.addLayer(marker);
+        }
+    });
+});
+
+// Fit map to show all markers
+if (allMarkers.length > 0) {
+    map.fitBounds(markers.getBounds(), { padding: [50, 50] });
+}
+</script>
+{% endblock %}

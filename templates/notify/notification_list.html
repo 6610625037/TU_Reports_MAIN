@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}การแจ้งเตือน - TU Report{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">🔔 การแจ้งเตือน</h1>
+    <p class="text-sm text-gray-600 mt-2">รายการแจ้งเตือนทั้งหมด</p>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-600">การแจ้งเตือนที่ยังไม่ได้อ่าน</p>
+        <p class="text-3xl font-bold text-red-600">{{ unread_count }}</p>
+      </div>
+      {% if unread_count > 0 %}
+      <form method="post" action="{% url 'notify:mark_all_read' %}">
+        {% csrf_token %}
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          ✅ ทำเครื่องหมายอ่านทั้งหมด
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <form method="get" class="space-y-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Filter by Read Status -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">สถานะการอ่าน</label>
+          <select name="read" onchange="this.form.submit()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
+            <option value="">ทั้งหมด</option>
+            <option value="unread" {% if filter_read == 'unread' %}selected{% endif %}>ยังไม่ได้อ่าน</option>
+            <option value="read" {% if filter_read == 'read' %}selected{% endif %}>อ่านแล้ว</option>
+          </select>
+        </div>
+
+        <!-- Filter by Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
+          <select name="type" onchange="this.form.submit()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
+            <option value="">ทั้งหมด</option>
+            <option value="NEW_TICKET" {% if filter_type == 'NEW_TICKET' %}selected{% endif %}>Ticket ใหม่</option>
+            <option value="ASSIGNED" {% if filter_type == 'ASSIGNED' %}selected{% endif %}>มอบหมายงาน</option>
+            <option value="REASSIGNED" {% if filter_type == 'REASSIGNED' %}selected{% endif %}>มอบหมายใหม่</option>
+            <option value="STATUS_CHANGE" {% if filter_type == 'STATUS_CHANGE' %}selected{% endif %}>เปลี่ยนสถานะ</option>
+            <option value="COMPLETED" {% if filter_type == 'COMPLETED' %}selected{% endif %}>ปิดงาน</option>
+            <option value="URGENT" {% if filter_type == 'URGENT' %}selected{% endif %}>เร่งด่วน</option>
+            <option value="COMMENT" {% if filter_type == 'COMMENT' %}selected{% endif %}>ข้อความ</option>
+            <option value="FEEDBACK" {% if filter_type == 'FEEDBACK' %}selected{% endif %}>ความคิดเห็น</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Clear Filters -->
+      {% if filter_read or filter_type %}
+      <div>
+        <a href="{% url 'notify:list' %}" class="text-sm text-blue-600 hover:underline">
+          🔄 ล้างตัวกรอง
+        </a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Notifications List -->
+  <div class="space-y-3">
+    {% if notifications %}
+      {% for notif in notifications %}
+      <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow {% if not notif.is_read %}border-l-4 border-red-500{% endif %}">
+        <div class="p-4">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <!-- Icon + Type Badge -->
+              <div class="flex items-center gap-2 mb-2">
+                {% if notif.notification_type == 'NEW_TICKET' %}
+                  <span class="text-2xl">🎫</span>
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">Ticket ใหม่</span>
+                {% elif notif.notification_type == 'ASSIGNED' %}
+                  <span class="text-2xl">👷</span>
+                  <span class="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">มอบหมายงาน</span>
+                {% elif notif.notification_type == 'REASSIGNED' %}
+                  <span class="text-2xl">🔄</span>
+                  <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded">มอบหมายใหม่</span>
+                {% elif notif.notification_type == 'STATUS_CHANGE' %}
+                  <span class="text-2xl">🔔</span>
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">เปลี่ยนสถานะ</span>
+                {% elif notif.notification_type == 'COMPLETED' %}
+                  <span class="text-2xl">✅</span>
+                  <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">ปิดงาน</span>
+                {% elif notif.notification_type == 'URGENT' %}
+                  <span class="text-2xl">🚨</span>
+                  <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">เร่งด่วน</span>
+                {% elif notif.notification_type == 'COMMENT' %}
+                  <span class="text-2xl">💬</span>
+                  <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded">ข้อความ</span>
+                {% elif notif.notification_type == 'FEEDBACK' %}
+                  <span class="text-2xl">⭐</span>
+                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">ความคิดเห็น</span>
+                {% endif %}
+
+                {% if not notif.is_read %}
+                  <span class="px-2 py-1 bg-red-600 text-white text-xs font-bold rounded">ใหม่</span>
+                {% endif %}
+              </div>
+
+              <!-- Title -->
+              <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ notif.title }}</h3>
+
+              <!-- Message -->
+              <p class="text-sm text-gray-600 mb-2">{{ notif.message }}</p>
+
+              <!-- Ticket Link -->
+              {% if notif.ticket %}
+              <a href="{% url 'tickets:ticket_detail' notif.ticket.id %}" class="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200">
+                🎫 ดู Ticket #{{ notif.ticket.id }}
+              </a>
+              {% endif %}
+
+              <!-- Timestamp -->
+              <p class="text-xs text-gray-400 mt-3">
+                📅 {{ notif.created_at|date:"d/m/Y H:i" }}
+                {% if notif.is_read and notif.read_at %}
+                  | ✓ อ่านแล้วเมื่อ {{ notif.read_at|date:"d/m/Y H:i" }}
+                {% endif %}
+              </p>
+            </div>
+
+            <!-- Mark as Read Button -->
+            {% if not notif.is_read %}
+            <div class="ml-4">
+              <form method="post" action="{% url 'notify:mark_read' notif.id %}">
+                {% csrf_token %}
+                <button type="submit" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700" title="ทำเครื่องหมายว่าอ่านแล้ว">
+                  ✓
+                </button>
+              </form>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Show More Info -->
+      {% if notifications.count == 50 %}
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+        <p class="text-sm text-blue-800">
+          แสดง 50 รายการล่าสุด
+        </p>
+      </div>
+      {% endif %}
+
+    {% else %}
+      <!-- Empty State -->
+      <div class="bg-white rounded-lg shadow p-8 text-center">
+        <div class="text-6xl mb-4">🔕</div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">ไม่มีการแจ้งเตือน</h3>
+        <p class="text-gray-600">
+          {% if filter_read or filter_type %}
+            ไม่พบการแจ้งเตือนที่ตรงกับตัวกรอง
+          {% else %}
+            คุณยังไม่มีการแจ้งเตือนในขณะนี้
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Auto-refresh script (optional) -->
+<script>
+// Auto-reload every 60 seconds to get new notifications
+// setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}

@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TU REPORT - แผนที่ปัญหาทั้งหมด{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">แผนที่ปัญหาทั้งหมด</h1>
+    <p class="text-gray-600 mt-2">แสดงตำแหน่งและสถานะของ Tickets ทั้งหมดในระบบ</p>
+  </div>
+
+  <!-- Latest 10 Tickets Section -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-gray-800">Tickets ล่าสุด 10 รายการ</h2>
+      <button onclick="location.reload()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        รีเฟรช
+      </button>
+    </div>
+
+    <!-- Status Filter for Latest Tickets -->
+    <div class="mb-4">
+      <form method="get" class="flex gap-2">
+        <button type="submit" name="latest_status" value="all"
+          class="px-4 py-2 rounded {% if latest_status_filter == 'all' %}bg-red-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+          ทั้งหมด
+        </button>
+        <button type="submit" name="latest_status" value="pending"
+          class="px-4 py-2 rounded {% if latest_status_filter == 'pending' %}bg-yellow-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+          รอดำเนินการ
+        </button>
+        <button type="submit" name="latest_status" value="in_progress"
+          class="px-4 py-2 rounded {% if latest_status_filter == 'in_progress' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+          กำลังดำเนินการ
+        </button>
+        <button type="submit" name="latest_status" value="completed"
+          class="px-4 py-2 rounded {% if latest_status_filter == 'completed' %}bg-green-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+          เสร็จสิ้น
+        </button>
+      </form>
+    </div>
+
+    <!-- Tickets Table -->
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ประเภทปัญหา</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หัวข้อ</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความเร่งด่วน</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">วันที่แจ้ง</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for ticket in latest_tickets %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="px-2 py-1 text-xs font-semibold rounded" style="background-color: {{ ticket.category.color }}20; color: {{ ticket.category.color }};">
+                {{ ticket.category.name }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="text-sm font-medium text-gray-900">{{ ticket.title|truncatewords:10 }}</div>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {% if ticket.status == 'PENDING' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">รอดำเนินการ</span>
+              {% elif ticket.status in 'IN_PROGRESS,INSPECTING,WORKING' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">กำลังดำเนินการ</span>
+              {% elif ticket.status in 'COMPLETED,CLOSED' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">เสร็จสิ้น</span>
+              {% else %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800">{{ ticket.get_status_display }}</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {% if ticket.urgency_level == 'CRITICAL' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800">🔴 เร่งด่วนมาก</span>
+              {% elif ticket.urgency_level == 'HIGH' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800">เร่งด่วน</span>
+              {% elif ticket.urgency_level == 'MEDIUM' %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">ปานกลาง</span>
+              {% else %}
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800">ต่ำ</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+              {{ ticket.created_at|date:"d/m/Y H:i" }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm">
+              <a href="{% url 'tickets:ticket_detail' ticket.id %}" class="text-blue-600 hover:text-blue-800 font-medium">
+                ดูรายละเอียด
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+              ไม่พบ Ticket
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600">ทั้งหมด</p>
+          <p class="text-3xl font-bold text-gray-800">{{ total_tickets }}</p>
+        </div>
+        <div class="text-4xl">📊</div>
+      </div>
+    </div>
+
+    <div class="bg-yellow-50 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-yellow-700">รอดำเนินการ</p>
+          <p class="text-3xl font-bold text-yellow-800">{{ pending_count }}</p>
+        </div>
+        <div class="text-4xl">⏳</div>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-blue-700">กำลังดำเนินการ</p>
+          <p class="text-3xl font-bold text-blue-800">{{ in_progress_count }}</p>
+        </div>
+        <div class="text-4xl">🔧</div>
+      </div>
+    </div>
+
+    <div class="bg-green-50 rounded-lg shadow p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-green-700">เสร็จสิ้น</p>
+          <p class="text-3xl font-bold text-green-800">{{ completed_count }}</p>
+        </div>
+        <div class="text-4xl">✅</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow p-4 mb-6">
+    <form method="get" class="flex flex-wrap gap-4 items-end">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">กรองตามสถานะ</label>
+        <select name="status" class="border border-gray-300 rounded px-3 py-2" onchange="this.form.submit()">
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>ทั้งหมด</option>
+          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>รอดำเนินการ</option>
+          <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>กำลังดำเนินการ</option>
+          <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>เสร็จสิ้น</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">กรองตามหมวดหมู่</label>
+        <select name="category" class="border border-gray-300 rounded px-3 py-2" onchange="this.form.submit()">
+          <option value="all" {% if category_filter == 'all' %}selected{% endif %}>ทั้งหมด</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if category_filter|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>
+            {{ cat.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <button type="button" id="toggleHeatmap" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+          แสดง Heat Map
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Map -->
+  <div class="bg-white rounded-lg shadow p-4">
+    <div id="map" class="w-full h-96 rounded"></div>
+  </div>
+
+  <!-- Ticket Details Panel (Hidden by default) -->
+  <div id="ticketDetailsPanel" class="bg-white rounded-lg shadow p-6 mt-4 hidden">
+    <div class="flex justify-between items-start mb-4">
+      <h3 class="text-xl font-bold text-gray-800">รายละเอียด Ticket</h3>
+      <button id="closeDetailsPanel" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Left Column: Info -->
+      <div>
+        <div class="mb-4">
+          <h4 class="font-semibold text-gray-700 mb-2">หัวข้อ</h4>
+          <p id="detail-title" class="text-lg"></p>
+        </div>
+
+        <div class="mb-4">
+          <h4 class="font-semibold text-gray-700 mb-2">รายละเอียดปัญหา</h4>
+          <p id="detail-description" class="text-gray-600"></p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-2">สถานะ</h4>
+            <span id="detail-status" class="px-3 py-1 rounded text-sm font-semibold"></span>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-2">หมวดหมู่</h4>
+            <p id="detail-category" class="text-gray-600"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-2">ความเร่งด่วน</h4>
+            <p id="detail-urgency" class="text-gray-600"></p>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-700 mb-2">วันที่แจ้ง</h4>
+            <p id="detail-date" class="text-gray-600"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Photos -->
+      <div>
+        <div id="photos-container">
+          <div id="before-photo-container" class="mb-4 hidden">
+            <h4 class="font-semibold text-gray-700 mb-2">รูปก่อนดำเนินการ</h4>
+            <img id="detail-before-photo" class="w-full h-64 object-cover rounded-lg shadow" alt="Before Photo">
+          </div>
+
+          <div id="after-photo-container" class="hidden">
+            <h4 class="font-semibold text-gray-700 mb-2">รูปหลังดำเนินการ</h4>
+            <img id="detail-after-photo" class="w-full h-64 object-cover rounded-lg shadow" alt="After Photo">
+          </div>
+
+          <div id="no-photos" class="text-center text-gray-400 py-8 hidden">
+            <p>ไม่มีรูปภาพ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="bg-white rounded-lg shadow p-4 mt-4">
+    <h3 class="font-semibold mb-2">คำอธิบายสี</h3>
+    <div class="flex flex-wrap gap-4">
+      <div class="flex items-center">
+        <div class="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
+        <span class="text-sm">รอดำเนินการ (PENDING)</span>
+      </div>
+      <div class="flex items-center">
+        <div class="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
+        <span class="text-sm">กำลังดำเนินการ (IN_PROGRESS)</span>
+      </div>
+      <div class="flex items-center">
+        <div class="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+        <span class="text-sm">เสร็จสิ้น (COMPLETED/CLOSED)</span>
+      </div>
+      <div class="flex items-center">
+        <div class="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+        <span class="text-sm">ความเร่งด่วน (CRITICAL)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+// Initialize map centered on TU Rangsit
+const map = L.map('map').setView([14.0708, 100.6057], 15);
+
+// Add OpenStreetMap tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// Tickets data from Django
+const ticketsData = {{ tickets_geojson|safe }};
+
+// Color based on status
+function getMarkerColor(status) {
+  switch(status) {
+    case 'PENDING': return '#EAB308'; // yellow
+    case 'IN_PROGRESS':
+    case 'INSPECTING':
+    case 'WORKING': return '#3B82F6'; // blue
+    case 'COMPLETED':
+    case 'CLOSED': return '#10B981'; // green
+    default: return '#6B7280'; // gray
+  }
+}
+
+// Create markers and prepare heat map data
+const markers = [];
+const heatPoints = [];
+const categoryHeatMaps = {}; // Store points by category for density calculation
+
+ticketsData.forEach(feature => {
+  const props = feature.properties;
+  const coords = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+
+  // Group heat points by category for better density visualization
+  const categoryId = props.category_id;
+  if (!categoryHeatMaps[categoryId]) {
+    categoryHeatMaps[categoryId] = [];
+  }
+  categoryHeatMaps[categoryId].push(coords);
+
+  // Create circle marker
+  const marker = L.circleMarker(coords, {
+    radius: props.urgency === 'CRITICAL' ? 10 : 8,
+    fillColor: getMarkerColor(props.status),
+    color: props.urgency === 'CRITICAL' ? '#DC2626' : '#fff',
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.8
+  });
+
+  // Popup content (simplified)
+  marker.bindPopup(`
+    <div class="p-2">
+      <h3 class="font-bold text-lg mb-2">Ticket #${props.id}</h3>
+      <p class="font-semibold">${props.title}</p>
+      <p class="text-sm text-gray-600 mt-1">หมวดหมู่: ${props.category}</p>
+      <p class="text-sm text-gray-600">สถานะ: ${props.status_display}</p>
+      <button onclick="showTicketDetails(${props.id})" class="mt-2 inline-block px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+        ดูรายละเอียด
+      </button>
+    </div>
+  `);
+
+  // Click event to show details panel
+  marker.on('click', function() {
+    showTicketDetails(props.id);
+  });
+
+  marker.addTo(map);
+  markers.push(marker);
+});
+
+// Calculate density-based heat points
+// For each ticket, check proximity to same-category tickets and increase intensity
+ticketsData.forEach(feature => {
+  const props = feature.properties;
+  const coords = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+  const categoryId = props.category_id;
+
+  // Calculate nearby same-category tickets within ~100m (roughly 0.001 degrees)
+  let nearbyCount = 0;
+  const proximityThreshold = 0.001;
+
+  categoryHeatMaps[categoryId].forEach(otherCoord => {
+    const distance = Math.sqrt(
+      Math.pow(coords[0] - otherCoord[0], 2) +
+      Math.pow(coords[1] - otherCoord[1], 2)
+    );
+    if (distance < proximityThreshold) {
+      nearbyCount++;
+    }
+  });
+
+  // Intensity based on density (1.0 to 5.0)
+  const intensity = Math.min(nearbyCount * 0.5, 5.0);
+  heatPoints.push([...coords, intensity]);
+});
+
+// Heat map layer with improved gradient and settings
+const heatLayer = L.heatLayer(heatPoints, {
+  radius: 30,
+  blur: 20,
+  maxZoom: 17,
+  max: 5.0,  // Match max intensity from density calculation
+  gradient: {
+    0.0: 'rgba(0, 0, 255, 0)',      // Transparent blue (no density)
+    0.2: 'rgba(0, 255, 255, 0.5)',  // Light cyan (low density)
+    0.4: 'rgba(0, 255, 0, 0.7)',    // Green (medium-low density)
+    0.6: 'rgba(255, 255, 0, 0.8)',  // Yellow (medium-high density)
+    0.8: 'rgba(255, 165, 0, 0.9)',  // Orange (high density)
+    1.0: 'rgba(255, 0, 0, 1.0)'     // Red (very high density)
+  }
+});
+
+// Toggle heat map
+let heatmapVisible = false;
+document.getElementById('toggleHeatmap').addEventListener('click', function() {
+  if (heatmapVisible) {
+    map.removeLayer(heatLayer);
+    this.textContent = 'แสดง Heat Map';
+    this.classList.remove('bg-red-600');
+    this.classList.add('bg-red-500');
+    heatmapVisible = false;
+  } else {
+    map.addLayer(heatLayer);
+    this.textContent = 'ซ่อน Heat Map';
+    this.classList.remove('bg-red-500');
+    this.classList.add('bg-red-600');
+    heatmapVisible = true;
+  }
+});
+
+// Fit map to show all markers
+if (markers.length > 0) {
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.1));
+}
+
+// Function to show ticket details in panel
+function showTicketDetails(ticketId) {
+  // Find ticket data
+  const ticket = ticketsData.find(t => t.properties.id === ticketId);
+  if (!ticket) return;
+
+  const props = ticket.properties;
+
+  // Populate details
+  document.getElementById('detail-title').textContent = props.title;
+  document.getElementById('detail-description').textContent = props.description;
+  document.getElementById('detail-category').textContent = props.category;
+  document.getElementById('detail-urgency').textContent = props.urgency_display;
+  document.getElementById('detail-date').textContent = props.created_at;
+
+  // Status badge with color
+  const statusBadge = document.getElementById('detail-status');
+  statusBadge.textContent = props.status_display;
+  statusBadge.className = 'px-3 py-1 rounded text-sm font-semibold';
+
+  switch(props.status) {
+    case 'PENDING':
+      statusBadge.classList.add('bg-yellow-100', 'text-yellow-800');
+      break;
+    case 'IN_PROGRESS':
+    case 'INSPECTING':
+    case 'WORKING':
+      statusBadge.classList.add('bg-blue-100', 'text-blue-800');
+      break;
+    case 'COMPLETED':
+    case 'CLOSED':
+      statusBadge.classList.add('bg-green-100', 'text-green-800');
+      break;
+    default:
+      statusBadge.classList.add('bg-gray-100', 'text-gray-800');
+  }
+
+  // Handle photos
+  const beforePhotoContainer = document.getElementById('before-photo-container');
+  const afterPhotoContainer = document.getElementById('after-photo-container');
+  const noPhotos = document.getElementById('no-photos');
+
+  let hasPhotos = false;
+
+  if (props.before_photo) {
+    document.getElementById('detail-before-photo').src = props.before_photo;
+    beforePhotoContainer.classList.remove('hidden');
+    hasPhotos = true;
+  } else {
+    beforePhotoContainer.classList.add('hidden');
+  }
+
+  if (props.after_photo) {
+    document.getElementById('detail-after-photo').src = props.after_photo;
+    afterPhotoContainer.classList.remove('hidden');
+    hasPhotos = true;
+  } else {
+    afterPhotoContainer.classList.add('hidden');
+  }
+
+  if (!hasPhotos) {
+    noPhotos.classList.remove('hidden');
+  } else {
+    noPhotos.classList.add('hidden');
+  }
+
+  // Show panel and scroll to it
+  const panel = document.getElementById('ticketDetailsPanel');
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Close details panel
+document.getElementById('closeDetailsPanel').addEventListener('click', function() {
+  document.getElementById('ticketDetailsPanel').classList.add('hidden');
+});
+</script>
+{% endblock %}
